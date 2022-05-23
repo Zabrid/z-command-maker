@@ -3,8 +3,8 @@ options:
 
 # Zabrid's Command Maker
 # Author(s): {zabrid}#3433
-# Version: 1.0.0
-# Date 5/3/22
+# Version: 1.1.0
+# Date 5/23/22
 
 # ###################################################################
 
@@ -26,67 +26,6 @@ options:
 # Although, beware you might break something!
 
 # ###################################################################
-
-on command:
-    command does not contain "-"
-    {zcommandmaker-command::%command%} is true
-    cancel event
-    if {zcommandmaker-command::%command%-permission-toggle} is true:
-        if {zcommandmaker-command::%command%-permission} is set:
-            if player does not have permission {zcommandmaker-command::%command%-permission}:
-                send {@no-perms-message}
-                stop
-    if {zcommandmaker-command::%command%-cooldown-toggle} is true:
-        sender is a player
-        if {zcommandmaker-command::%command%-cooldown} is set:
-            set {_waited} to difference between {zcommandmaker-commandcooldown::%command%-%uuid of player%} and now
-            if {_waited} is less than {zcommandmaker-command::%command%-cooldown}:
-                set {_message::*} to {@cooldown-has-yet-to-expire-message}
-                replace all "{wait}" in {_message::*} with "%difference between {zcommandmaker-command::%command%-cooldown} and {_waited}%"
-                replace all "{player}" in {_message::*} with "%player%"
-                send {_message::*}
-                stop
-            if {zcommandmaker-command::%command%-price-toggle} is true:
-                sender is a player
-                if {zcommandmaker-command::%command%-price} is set:
-                    if player's balance is greater than or equal to {zcommandmaker-command::%command%-price}:
-                        set {zcommandmaker-commandcooldown::%command%-%uuid of player%} to now
-                else:
-                    set {zcommandmaker-commandcooldown::%command%-%uuid of player%} to now
-            else:
-                set {zcommandmaker-commandcooldown::%command%-%uuid of player%} to now
-    if {zcommandmaker-command::%command%-price-toggle} is true:
-        sender is a player
-        if {zcommandmaker-command::%command%-price} is set:
-            if player's balance is less than {zcommandmaker-command::%command%-price}:
-                set {_message::*} to {@need-more-money-message}
-                replace all "{price}" in {_message::*} with zcmdmaker_formatcommas("%{zcommandmaker-command::%command%-price}%")
-                replace all "{player}" in {_message::*} with "%player%"
-                send {_message::*}
-                stop
-            subtract {zcommandmaker-command::%command%-price} from player's balance
-    if {zcommandmaker-command::%command%-command-toggle} is true:
-        if {zcommandmaker-command::%command%-command} is set:
-            set {_message::*} to colored {zcommandmaker-command::%command%-command} split by "||"
-            send formatted {_message::*}
-    if {zcommandmaker-command::%command%-tploc-toggle} is true:
-        if {zcommandmaker-command::%command%-tploc} is set:
-            teleport player to {zcommandmaker-command::%command%-tploc}
-    if {zcommandmaker-command::%command%-titlemessage-toggle} is true:
-        if {zcommandmaker-command::%command%-titlemessage} is set:
-            set {_title::*} to colored {zcommandmaker-command::%command%-titlemessage} split by "||"
-            send title {_title::1} with subtitle {_title::2} to player for 2.5 seconds
-    if {zcommandmaker-command::%command%-consolecmds-toggle} is true:
-        if {zcommandmaker-command::%command%-consolecmds} is set:
-            set {_commands::*} to {zcommandmaker-command::%command%-consolecmds} split by "||"
-            replace all "{player}" in {_commands::*} with "%player%"
-            loop {_commands::*}:
-                execute console command "/%loop-value%"
-    if {zcommandmaker-command::%command%-items-toggle} is true:
-        set {_cmd} to command in lowercase
-        if {zcommandmaker-command-items-%{_cmd}%::*} is set:
-            loop {zcommandmaker-command-items-%{_cmd}%::*}:    
-                add loop-value to player's inventory
 
 command /commandmaker [<text>] [<text>]:
     aliases: /cm, /cmd
@@ -774,5 +713,64 @@ function zcmdmaker_createCommandTabSkript(cmd: text):
     create script "plugins/Skript/scripts/ZabridCommandMaker/TabCommands/%{_cmd}%.sk"
     write "command /%{_cmd}% [<text>] [<text>]:" at line 1 to file "plugins/Skript/scripts/ZabridCommandMaker/TabCommands/%{_cmd}%.sk"
     write "    trigger:" at line 2 to file "plugins/Skript/scripts/ZabridCommandMaker/TabCommands/%{_cmd}%.sk"
-    write "        set {_run} to true" at line 3 to file "plugins/Skript/scripts/ZabridCommandMaker/TabCommands/%{_cmd}%.sk"
+    write "        zcmdmaker_runcmd(""%{_cmd}%"", player)" at line 3 to file "plugins/Skript/scripts/ZabridCommandMaker/TabCommands/%{_cmd}%.sk"
     execute console command "sk reload ZabridCommandMaker/TabCommands/"
+
+function zcmdmaker_runcmd(cmd: text, p: player):
+    set {_uuid} to {_p}'s uuid
+    {zcommandmaker-command::%{_cmd}%} is true
+    if {zcommandmaker-command::%{_cmd}%-permission-toggle} is true:
+        if {zcommandmaker-command::%{_cmd}%-permission} is set:
+            if {_p} does not have permission {zcommandmaker-command::%{_cmd}%-permission}:
+                send {@no-perms-message} to {_p}
+                stop
+    if {zcommandmaker-command::%{_cmd}%-cooldown-toggle} is true:
+        {_p} is a player
+        if {zcommandmaker-command::%{_cmd}%-cooldown} is set:
+            set {_waited} to difference between {zcommandmaker-commandcooldown::%{_cmd}%-%{_uuid}%} and now
+            if {_waited} is less than {zcommandmaker-command::%{_cmd}%-cooldown}:
+                set {_message::*} to {@cooldown-has-yet-to-expire-message}
+                replace all "{wait}" in {_message::*} with "%difference between {zcommandmaker-command::%{_cmd}%-cooldown} and {_waited}%"
+                replace all "{player}" in {_message::*} with "%{_p}%"
+                send {_message::*} to {_p}
+                stop
+            if {zcommandmaker-command::%{_cmd}%-price-toggle} is true:
+                sender is a player
+                if {zcommandmaker-command::%{_cmd}%-price} is set:
+                    if {_p}'s balance is greater than or equal to {zcommandmaker-command::%{_cmd}%-price}:
+                        set {zcommandmaker-commandcooldown::%{_cmd}%-%{_uuid}%} to now
+                else:
+                    set {zcommandmaker-commandcooldown::%{_cmd}%-%{_uuid}%} to now
+            else:
+                set {zcommandmaker-commandcooldown::%{_cmd}%-%{_uuid}%} to now
+    if {zcommandmaker-command::%{_cmd}%-price-toggle} is true:
+        {_p} is a player
+        if {zcommandmaker-command::%{_cmd}%-price} is set:
+            if {_p}'s balance is less than {zcommandmaker-command::%{_cmd}%-price}:
+                set {_message::*} to {@need-more-money-message}
+                replace all "{price}" in {_message::*} with zcmdmaker_formatcommas("%{zcommandmaker-command::%{_cmd}%-price}%")
+                replace all "{player}" in {_message::*} with "%{_p}%"
+                send {_message::*} to {_p}
+                stop
+            subtract {zcommandmaker-command::%{_cmd}%-price} from {_p}'s balance
+    if {zcommandmaker-command::%{_cmd}%-command-toggle} is true:
+        if {zcommandmaker-command::%{_cmd}%-command} is set:
+            set {_message::*} to colored {zcommandmaker-command::%{_cmd}%-command} split by "||"
+            send formatted {_message::*} to {_p}
+    if {zcommandmaker-command::%{_cmd}%-tploc-toggle} is true:
+        if {zcommandmaker-command::%{_cmd}%-tploc} is set:
+            teleport {_p} to {zcommandmaker-command::%{_cmd}%-tploc}
+    if {zcommandmaker-command::%{_cmd}%-titlemessage-toggle} is true:
+        if {zcommandmaker-command::%{_cmd}%-titlemessage} is set:
+            set {_title::*} to colored {zcommandmaker-command::%{_cmd}%-titlemessage} split by "||"
+            send title {_title::1} with subtitle {_title::2} to {_p} for 2.5 seconds
+    if {zcommandmaker-command::%{_cmd}%-consolecmds-toggle} is true:
+        if {zcommandmaker-command::%{_cmd}%-consolecmds} is set:
+            set {_commands::*} to {zcommandmaker-command::%{_cmd}%-consolecmds} split by "||"
+            replace all "{player}" in {_commands::*} with "%{_p}%"
+            loop {_commands::*}:
+                execute console command "/%loop-value%"
+    if {zcommandmaker-command::%{_cmd}%-items-toggle} is true:
+        if {zcommandmaker-command-items-%{_cmd}%::*} is set:
+            loop {zcommandmaker-command-items-%{_cmd}%::*}:    
+                add loop-value to {_p}'s inventory
