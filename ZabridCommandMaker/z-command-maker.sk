@@ -1,0 +1,778 @@
+options:
+# ###################################################################
+
+# Zabrid's Command Maker
+# Author(s): {zabrid}#3433
+# Version: 1.0.0
+# Date 5/3/22
+
+# ###################################################################
+
+    # The message that is sent when a player does not have perms.
+    no-perms-message: "&cYou do not have the required permissions."
+
+    # The message that is sent when a player does not have the required amount of money
+    need-more-money-message: "&cYou need at least ${price} to use this command."
+
+    # The message that is sent when the cooldown has yet to expire
+    cooldown-has-yet-to-expire-message: "&cYou must wait {wait} to use this command again."
+
+# ###################################################################
+
+# Zabrid's Command Maker
+# Source Code
+
+# Feel free to change anything below this point.
+# Although, beware you might break something!
+
+# ###################################################################
+
+on command:
+    command does not contain "-"
+    {zcommandmaker-command::%command%} is true
+    cancel event
+    if {zcommandmaker-command::%command%-permission-toggle} is true:
+        if {zcommandmaker-command::%command%-permission} is set:
+            if player does not have permission {zcommandmaker-command::%command%-permission}:
+                send {@no-perms-message}
+                stop
+    if {zcommandmaker-command::%command%-cooldown-toggle} is true:
+        sender is a player
+        if {zcommandmaker-command::%command%-cooldown} is set:
+            set {_waited} to difference between {zcommandmaker-commandcooldown::%command%-%uuid of player%} and now
+            if {_waited} is less than {zcommandmaker-command::%command%-cooldown}:
+                set {_message::*} to {@cooldown-has-yet-to-expire-message}
+                replace all "{wait}" in {_message::*} with "%difference between {zcommandmaker-command::%command%-cooldown} and {_waited}%"
+                replace all "{player}" in {_message::*} with "%player%"
+                send {_message::*}
+                stop
+            if {zcommandmaker-command::%command%-price-toggle} is true:
+                sender is a player
+                if {zcommandmaker-command::%command%-price} is set:
+                    if player's balance is greater than or equal to {zcommandmaker-command::%command%-price}:
+                        set {zcommandmaker-commandcooldown::%command%-%uuid of player%} to now
+                else:
+                    set {zcommandmaker-commandcooldown::%command%-%uuid of player%} to now
+            else:
+                set {zcommandmaker-commandcooldown::%command%-%uuid of player%} to now
+    if {zcommandmaker-command::%command%-price-toggle} is true:
+        sender is a player
+        if {zcommandmaker-command::%command%-price} is set:
+            if player's balance is less than {zcommandmaker-command::%command%-price}:
+                set {_message::*} to {@need-more-money-message}
+                replace all "{price}" in {_message::*} with zcmdmaker_formatcommas("%{zcommandmaker-command::%command%-price}%")
+                replace all "{player}" in {_message::*} with "%player%"
+                send {_message::*}
+                stop
+            subtract {zcommandmaker-command::%command%-price} from player's balance
+    if {zcommandmaker-command::%command%-command-toggle} is true:
+        if {zcommandmaker-command::%command%-command} is set:
+            set {_message::*} to colored {zcommandmaker-command::%command%-command} split by "||"
+            send formatted {_message::*}
+    if {zcommandmaker-command::%command%-tploc-toggle} is true:
+        if {zcommandmaker-command::%command%-tploc} is set:
+            teleport player to {zcommandmaker-command::%command%-tploc}
+    if {zcommandmaker-command::%command%-titlemessage-toggle} is true:
+        if {zcommandmaker-command::%command%-titlemessage} is set:
+            set {_title::*} to colored {zcommandmaker-command::%command%-titlemessage} split by "||"
+            send title {_title::1} with subtitle {_title::2} to player for 2.5 seconds
+    if {zcommandmaker-command::%command%-consolecmds-toggle} is true:
+        if {zcommandmaker-command::%command%-consolecmds} is set:
+            set {_commands::*} to {zcommandmaker-command::%command%-consolecmds} split by "||"
+            replace all "{player}" in {_commands::*} with "%player%"
+            loop {_commands::*}:
+                execute console command "/%loop-value%"
+    if {zcommandmaker-command::%command%-items-toggle} is true:
+        set {_cmd} to command in lowercase
+        if {zcommandmaker-command-items-%{_cmd}%::*} is set:
+            loop {zcommandmaker-command-items-%{_cmd}%::*}:    
+                add loop-value to player's inventory
+
+command /commandmaker [<text>] [<text>]:
+    aliases: /cm, /cmd
+    trigger:
+        if arg 1 is not set:
+            send ""
+            send "&e&lCommand Maker"
+            send "&7 Author: &e{zabrid}##3433"
+            send ""
+            send "&6 -> &e/commandmaker create <name> &7&o(zcmdmaker.create)"
+            send "&6 -> &e/commandmaker delete <name> &7&o(zcmdmaker.delete)"
+            send "&6 -> &e/commandmaker edit <name> &7&o(zcmdmaker.edit)"
+            send "&6 -> &e/commandmaker list &7&o(zcmdmaker.list)"
+            send ""
+        else if arg 1 is "create":
+            if player does not have permission "zcmdmaker.create":
+                send formatted {@no-perms-message}
+                stop
+            if arg 2 is not set:
+                send "&cYou must specify the name of the command you wish to create."
+                send "&6 -> &e/commandmaker create <name>"
+                stop
+            if arg 2 contains " " or "-":
+                send "&cYour command cannot contain a space."
+                send "&6 -> &e/commandmaker create <name>"
+                stop
+            if {zcommandmaker-command::%arg 2%} is set:
+                send "&cThis command has already been created."
+                send formatted "&6 -> &eYou can edit the command with &6/cmd edit %arg 2% &7<suggest command:/cmd edit %arg 2%>(Click Here)"
+                send formatted "&6 -> &eYou can also delete the command with &6/cmd delete %arg 2% &7<suggest command:/cmd delete %arg 2%>(Click Here)"
+                stop
+            set {_cmd} to arg 2 in lowercase
+            set {zcommandmaker-command::%{_cmd}%} to true
+            send ""
+            send "&a&lYOU HAVE CREATED A NEW COMMAND"
+            send ""
+            send "&6 -> &eCommand Name: /%{_cmd}%"
+            send ""
+            send formatted "&6 -> &eYou can edit the command with &6/cmd edit %{_cmd}% &7<suggest command:/cmd edit %{_cmd}%>(Click Here)"
+            send formatted "&6 -> &eYou can also delete the command with &6/cmd delete %{_cmd}% &7<suggest command:/cmd delete %{_cmd}%>(Click Here)"
+            send ""
+            zcmdmaker_createCommandTabSkript({_cmd})
+            zcmdmaker_openeditgui(player, {_cmd})
+        else if arg 1 is "edit":
+            if player does not have permission "zcmdmaker.edit":
+                send formatted {@no-perms-message}
+                stop
+            if arg 2 is not set:
+                send "&cYou must specify the name of the command you wish to edit."
+                send "&6 -> &e/commandmaker edit <name>"
+                stop
+            if {zcommandmaker-command::%arg 2%} is not set:
+                send "&cThis command does not currently exist."
+                send formatted "&6 -> &eYou can create the command with &6/cmd create %arg 2% &7<suggest command:/cmd create %arg 2%>(Click Here)"
+                stop
+            zcmdmaker_openeditgui(player, arg 2)
+        else if arg 1 is "list":
+            if player does not have permission "zcmdmaker.list":
+                send formatted {@no-perms-message}
+                stop
+            if size of {zcommandmaker-command::*} is less than 1:
+                send "&cThere have been no commands created."
+                send formatted "&8 -> &eCreate a command with &6/cmd create &7<suggest command:/cmd create>(Click Here)"
+                stop
+            send ""
+            send "&e&lCommand Maker"
+            send "&7 Author: &e{zabrid}##3433"
+            send ""
+            send "&6Full list of all created commands:"
+            loop {zcommandmaker-command::*}:
+                loop-index does not contain "-"
+                if loop-value is true:
+                    set {_state} to "&aEnabled"
+                else:
+                    set {_state} to "&cDisabled"
+                send formatted "&6 -> &e/%loop-index% &8- %{_state}% &8- &e<suggest command:/cmd edit %loop-index%>(Edit)<reset> &4<suggest command:/cmd delete %loop-index%>(Delete)"
+            send ""
+        else if arg 1 is "delete":
+            if player does not have permission "zcmdmaker.delete":
+                send formatted {@no-perms-message}
+                stop
+            if {zcommandmaker-command::%arg 2%} is not set:
+                send "&cYou cannot delete a command that does not exist."
+                send formatted "&8 -> &eFor a list of all custom commands use &6/cmd list &7<suggest command:/cmd list>(Click Here)"
+                stop
+            set {_cmd} to lowercase arg 2
+            delete file "plugins/Skript/scripts/ZabridCommandMaker/TabCommands/%{_cmd}%.sk"
+            set {_values} to 1
+            delete {zcommandmaker-command::%{_cmd}%} and {zcommandmaker-command::%{_cmd}%-command} and {zcommandmaker-command::%{_cmd}%-command-toggle} and {zcommandmaker-command::%{_cmd}%-tploc} and {zcommandmaker-command::%{_cmd}%-tploc-toggle} and {zcommandmaker-command::%{_cmd}%-titlemessage} and {zcommandmaker-command::%{_cmd}%-titlemessage-toggle} and {zcommandmaker-command::%{_cmd}%-permission} and {zcommandmaker-command::%{_cmd}%-cooldown} and {zcommandmaker-command::%{_cmd}%-cooldown-toggle} and {zcommandmaker-command::%{_cmd}%-price-toggle} and {zcommandmaker-command::%{_cmd}%-price} and {zcommandmaker-command::%{_cmd}%-consolecmds} and {zcommandmaker-command::%{_cmd}%-consolecmds-toggle} and {zcommandmaker-command-items-%{_cmd}%::*} and {zcommandmaker-command::%{_cmd}%-items-toggle}
+            wait 2 ticks
+            execute console command "plugins/Skript/scripts/ZabridCommandMaker/TabCommands/"
+            send "&cYou have successfully deleted &n/%{_cmd}%"
+            send "&6 -> &7You deleted a total of &c%{_values}%&7 values."
+            
+function zcmdmaker_openeditgui(p: player, cmd: text):
+    if {_cmd} contains " " or "-":
+        send "&cThe command you specified has disallowed characters." to {_p}
+        stop
+    if {_p} does not have permission "zcmdmaker.edit":
+        send formatted {@no-perms-message} to {_p}
+        stop
+    set {_gui} to chest inventory with 5 rows named "&8Zabrid's Command Maker | &6&l/%{_cmd}%"
+    set {_gui} to zcmdmaker_bordergui({_gui}, 5, 1 of grey stained glass pane named "&8Zabrid's Command Maker")
+
+    set slot 44 of {_gui} to 1 of map with all flags hidden named "&eResource Information" with lore "" and "&bClick to get all useful resource information"
+
+    #Command Toggle GUI Display
+    if {zcommandmaker-command::%{_cmd}%} is true:
+        set slot 13 of {_gui} to 1 of lime dye named "&eCommand Toggle" with lore "&8Zabrid's Command Maker" and "" and "&7Enabled: &aTrue" and "" and "&bClick to toggle this command." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+    else:
+        set slot 13 of {_gui} to 1 of red dye named "&eCommand Toggle" with lore "&8Zabrid's Command Maker" and "" and "&7Enabled: &cFalse" and "" and "&bClick to toggle this command." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+    
+    #Command Message GUI Display
+    set {_message1::*} to {zcommandmaker-command::%{_cmd}%-command} split by "||"
+    if size of {_message1::*} is less than 1:
+        set {_message::*} to "&6 - &fN/A"
+    else:
+        loop {_message1::*}:
+            add "&6 - &f%colored loop-value%" to {_message::*}
+    if {zcommandmaker-command::%{_cmd}%-command-toggle} is true:
+        set {_item} to zcmdmaker_glow(paper)
+        set {_toggle} to "&aTrue"
+    else:
+        set {_item} to paper
+        set {_toggle} to "&cFalse"
+    set slot 20 of {_gui} to 1 of {_item} with all flags hidden named "&eCommand Message" with lore "&8Zabrid's Command Maker" and "" and "&7Send the player this message" and "&7whenever this command is run." and "" and "&7Enabled: %{_toggle}%" and "" and "&eCurrent Command Message:" and {_message::*} and "" and "&bLeft Click to set a new command message." and "&bRight Click to toggle the command message." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+
+    #Teleportation GUI Display
+    set {_location::*} to {zcommandmaker-command::%{_cmd}%-tploc} ? "None"
+    set {_location::*} to "%{_location::*}%" split by " in "
+    set {_location} to {_location::1} ? "N/A"
+    set {_world} to {_location::2} ? "N/A"
+    if {zcommandmaker-command::%{_cmd}%-tploc-toggle} is true:
+        set {_item} to zcmdmaker_glow(beacon)
+        set {_toggle} to "&aTrue"
+    else:
+        set {_item} to beacon
+        set {_toggle} to "&cFalse"
+    set slot 21 of {_gui} to 1 of {_item} named "&eTeleportation" with lore "&8Zabrid's Command Maker" and "" and "&7Teleport the player to a location" and "&7whenever this command is run." and "" and "&7Enabled: %{_toggle}%" and "" and "&eTeleport Location:" and "&6 - &f%{_location}%" and "" and "&eTeleport World:" and "&6 - &f%{_world}%" and "" and "&bLeft Click to set the location to your location." and "&bRight Click to toggle command teleportation." and "&bMiddle Click to clear the teleport location." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+
+    #Title & Subtitle GUI Display
+    set {_title::*} to {zcommandmaker-command::%{_cmd}%-titlemessage} split by "||"
+    set {_title} to {_title::1} ? "N/A"
+    set {_subtitle} to {_title::2} ? "N/A"
+    if {zcommandmaker-command::%{_cmd}%-titlemessage-toggle} is true:
+        set {_item} to zcmdmaker_glow(firework rocket)
+        set {_toggle} to "&aTrue"
+    else:
+        set {_item} to firework rocket
+        set {_toggle} to "&cFalse"
+    set slot 22 of {_gui} to 1 of {_item} with all flags hidden named "&eTitle & Subtitle Message" with lore "&8Zabrid's Command Maker" and "" and "&7Send the player a title and subtitle" and "&7message whenever this command is run." and "" and "&7Enabled: %{_toggle}%" and "" and "&eTitle:" and "&6 - &f%{_title}%" and "" and "&eSubtitle:" and "&6 - &f%{_subtitle}%" and "" and "&bLeft Click to set a new title/subtitle." and "&bRight Click to toggle the title/subtitle." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+    
+    #Permission GUI Display
+    set {_permission} to {zcommandmaker-command::%{_cmd}%-permission} ? "N/A"
+    if {zcommandmaker-command::%{_cmd}%-permission-toggle} is true:
+        set {_item} to zcmdmaker_glow(redstone dust)
+        set {_toggle} to "&aTrue"
+    else:
+        set {_item} to redstone dust
+        set {_toggle} to "&cFalse"
+    set slot 23 of {_gui} to 1 of {_item} with all flags hidden named "&eCommand Permission Node" with lore "&8Zabrid's Command Maker" and "" and "&7Require a permission the player" and "&7has to have to use this command." and "" and "&7Enabled: %{_toggle}%" and "" and "&ePermission:" and "&6 - &f%{_permission}%" and "" and "&bLeft Click to set the permission." and "&bRight Click to toggle the permission." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+
+    #Cooldown GUI Display
+    set {_cooldown} to {zcommandmaker-command::%{_cmd}%-cooldown} ? "N/A"
+    if {zcommandmaker-command::%{_cmd}%-cooldown-toggle} is true:
+        set {_item} to zcmdmaker_glow(clock)
+        set {_toggle} to "&aTrue"
+    else:
+        set {_item} to clock
+        set {_toggle} to "&cFalse"
+    set slot 24 of {_gui} to 1 of {_item} with all flags hidden named "&eCommand Cooldown" with lore "&8Zabrid's Command Maker" and "" and "&7Add a cooldown to this commmand." and "" and "&7Enabled: %{_toggle}%" and "" and "&eCooldown:" and "&6 - &f%{_cooldown}%" and "" and "&6Note:" and "&6 - &fThis cooldown does not carry over restarts." and "" and "&bLeft Click to set the cooldown." and "&bRight Click to toggle the cooldown." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+    
+    #Price GUI Display
+    set {_format} to {zcommandmaker-command::%{_cmd}%-price} ? "N/A"
+    set {_price} to zcmdmaker_formatcommas("%{_format}%")
+    if {zcommandmaker-command::%{_cmd}%-price-toggle} is true:
+        set {_item} to zcmdmaker_glow(lime candle)
+        set {_toggle} to "&aTrue"
+    else:
+        set {_item} to lime candle
+        set {_toggle} to "&cFalse"
+    set slot 29 of {_gui} to 1 of {_item} with all flags hidden named "&eCommand Price" with lore "&8Zabrid's Command Maker" and "" and "&7Add a price, the player has" and "&7to pay, to use this command." and "" and "&7Enabled: %{_toggle}%" and "" and "&ePrice:" and "&6 - &f$%{_price}%" and "" and "&bLeft Click to set the price." and "&bRight Click to toggle the price." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+    
+    #Console Commands GUI Display
+    set {_commands1::*} to {zcommandmaker-command::%{_cmd}%-consolecmds} split by "||"
+    if size of {_commands1::*} is less than 1:
+        set {_commands::*} to "&6 - &fN/A"
+    else:
+        loop {_commands1::*}:
+            add "&6 - &f/%loop-value%" to {_commands::*}
+    if {zcommandmaker-command::%{_cmd}%-consolecmds-toggle} is true:
+        set {_item} to zcmdmaker_glow(wither rose)
+        set {_toggle} to "&aTrue"
+    else:
+        set {_item} to wither rose
+        set {_toggle} to "&cFalse"
+    set slot 30 of {_gui} to 1 of {_item} with all flags hidden named "&eConsole Commands" with lore "&8Zabrid's Command Maker" and "" and "&7Make console run commands when" and "&7the player uses this command." and "" and "&7Enabled: %{_toggle}%" and "" and "&eCommands:" and {_commands::*} and "" and "&6Note:" and "&6 - &fUse &n{player}&f to get the name of the player" and "" and "&bLeft Click to set the console commands." and "&bRight Click to toggle the commands." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+
+    set {_items::*} to {zcommandmaker-command-items-%{_cmd}%::*}
+    if {zcommandmaker-command::%{_cmd}%-items-toggle} is true:
+        set {_item} to zcmdmaker_glow(chainmail chestplate)
+        set {_toggle} to "&aTrue"
+    else:
+        set {_item} to chainmail chestplate
+        set {_toggle} to "&cFalse"
+    set slot 31 of {_gui} to 1 of {_item} with all flags hidden named "&eCommand Items" with lore "&8Zabrid's Command Maker" and "" and "&7Give these items to the player" and "&7whenever they use this command." and "" and "&7Enabled: %{_toggle}%" and "" and "&eItem Amount:" and "&6 - &f%size of {_items::*}%" and "" and "&bLeft Click to edit the command items." and "&bRight Click to toggle the command items." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+
+    open {_gui} to {_p}
+
+on inventory click:
+    if name of player's current inventory contains "&8Zabrid's Command Maker |":
+        set {_uuid} to uuid of player
+        cancel event
+        clicked inventory is player's current inventory
+        if index of clicked slot is 44:
+            close player's inventory
+            send ""
+            send "&e&lCommand Maker"
+            send "&7 Author: &e{zabrid}##3433"
+            send ""
+            send formatted "&6 -> <link:https://discord.gg/HRuRU3kB5k>&9Support Discord: &eClick Here"
+            send ""
+            stop
+
+        set {_cmd} to tag "zcmdmaker-command" of clicked slot's nbt
+        if {_cmd} is set:
+
+            if index of clicked slot is 13:
+                if {zcommandmaker-command::%{_cmd}%} is true:
+                    execute console command "sk disable ZabridCommandMaker/TabCommands/%{_cmd}%"
+                    set {zcommandmaker-command::%{_cmd}%} to false
+                else:
+                    execute console command "sk enable ZabridCommandMaker/TabCommands/%{_cmd}%"
+                    set {zcommandmaker-command::%{_cmd}%} to true
+                zcmdmaker_openeditgui(player, {_cmd})
+            
+            else if index of clicked slot is 20:
+
+                if click action is right mouse button:
+                    if {zcommandmaker-command::%{_cmd}%-command-toggle} is true:
+                        delete {zcommandmaker-command::%{_cmd}%-command-toggle}
+                    else:
+                        set {zcommandmaker-command::%{_cmd}%-command-toggle} to true   
+                    zcmdmaker_openeditgui(player, {_cmd})
+                else if click action is left mouse button:
+                    send ""
+                    send "&6Changing &6&l/%{_cmd}%&6 Command Message"
+                    send "&7Type what you wish to set /%{_cmd}%'s command message to."
+                    send ""
+                    send formatted "&6 -> &eTo create a new line use ""||"" to split the lines. <suggest command:&7Line 1 of the message||&aLine 2 of the message>&7(Example)"
+                    send formatted "&6 -> &eTo create clickable links use ""<&elink:link here>"". <suggest command:&9Discord Server: <link:https://discord.gg/xxxxx/>&7Click Here>&7(Example)"
+                    send ""
+                    if {zcommandmaker-command::%{_cmd}%-command} is set:
+                        set {_message} to {zcommandmaker-command::%{_cmd}%-command}
+                        send formatted "&b&l -> &7Copy what the command message is currently set to by clicking <suggest command:%{_message}%>&b&nHere"
+                        send ""
+                    send "&c&l -> &7Type 'cancel' to cancel the change."
+                    send "&c&l -> &7Type 'none' to delete the command message."
+                    send ""
+                    close player's inventory
+                    set {zcmdmaker-changetime::%{_uuid}%} to now
+                    set {_now} to now
+                    set {zcmdmaker-changetype::%{_uuid}%} to "command message"
+                    set {zcmdmaker-changeitem::%{_uuid}%} to {_cmd}
+                    wait 40 seconds
+                    {zcmdmaker-changetime::%{_uuid}%} is {_now}
+                    send "&cYour time to change the command message has run out."
+                    zcmdmaker_openeditgui(player, {_cmd})
+                    delete {zcmdmaker-changetime::%{_uuid}%} and {zcmdmaker-changetype::%{_uuid}%} and {zcmdmaker-changeitem::%{_uuid}%}
+                    stop
+            
+            else if index of clicked slot is 21:
+                if click action is right mouse button:
+                    if {zcommandmaker-command::%{_cmd}%-tploc-toggle} is true:
+                        delete {zcommandmaker-command::%{_cmd}%-tploc-toggle}
+                    else:
+                        set {zcommandmaker-command::%{_cmd}%-tploc-toggle} to true   
+                    zcmdmaker_openeditgui(player, {_cmd})
+                else if click action is left mouse button:
+                    set {zcommandmaker-command::%{_cmd}%-tploc} to player's location
+                    send "&aYou have set the teleport location to:"
+                    send "&6 -> &e%player's location%"
+                    zcmdmaker_openeditgui(player, {_cmd})
+                else if click action is middle mouse button:
+                    delete {zcommandmaker-command::%{_cmd}%-tploc}
+                    send "&cYou have deleted the teleport location."
+                    zcmdmaker_openeditgui(player, {_cmd})
+            
+            else if index of clicked slot is 22:
+
+                if click action is right mouse button:
+                    if {zcommandmaker-command::%{_cmd}%-titlemessage-toggle} is true:
+                        delete {zcommandmaker-command::%{_cmd}%-titlemessage-toggle}
+                    else:
+                        set {zcommandmaker-command::%{_cmd}%-titlemessage-toggle} to true
+                    zcmdmaker_openeditgui(player, {_cmd})
+                else if click action is left mouse button:
+                    send ""
+                    send "&6Changing &6&l/%{_cmd}%&6 Title/Subtitle message"
+                    send "&7Type what you wish to set /%{_cmd}%'s Title/Subtitle message to."
+                    send ""
+                    send formatted "&6 -> &eTo seperate the title and subtitle use ""||"". <suggest command:&7This is the title||&fThis is the subtitle>&7(Example)"
+                    send ""
+                    if {zcommandmaker-command::%{_cmd}%-titlemessage} is set:
+                        set {_message} to {zcommandmaker-command::%{_cmd}%-titlemessage}
+                        send formatted "&b&l -> &7Copy what the title and subtitle is currently set to by clicking <suggest command:%{_message}%>&b&nHere"
+                        send ""
+                    send "&c&l -> &7Type 'cancel' to cancel the change."
+                    send "&c&l -> &7Type 'none' to delete the title/subtitle."
+                    send ""
+                    close player's inventory
+                    set {zcmdmaker-changetime::%{_uuid}%} to now
+                    set {_now} to now
+                    set {zcmdmaker-changetype::%{_uuid}%} to "title message"
+                    set {zcmdmaker-changeitem::%{_uuid}%} to {_cmd}
+                    wait 40 seconds
+                    {zcmdmaker-changetime::%{_uuid}%} is {_now}
+                    send "&cYour time to change the title/subtitle has run out."
+                    zcmdmaker_openeditgui(player, {_cmd})
+                    delete {zcmdmaker-changetime::%{_uuid}%} and {zcmdmaker-changetype::%{_uuid}%} and {zcmdmaker-changeitem::%{_uuid}%}
+                    stop
+            
+            else if index of clicked slot is 23:
+
+                if click action is right mouse button:
+                    if {zcommandmaker-command::%{_cmd}%-permission-toggle} is true:
+                        delete {zcommandmaker-command::%{_cmd}%-permission-toggle}
+                    else:
+                        set {zcommandmaker-command::%{_cmd}%-permission-toggle} to true
+                    zcmdmaker_openeditgui(player, {_cmd})
+                else if click action is left mouse button:
+                    send ""
+                    send "&6Changing &6&l/%{_cmd}%&6 permission node"
+                    send "&7Type what you wish to set /%{_cmd}%'s permission node to."
+                    send ""
+                    send "&c&l -> &7Type 'cancel' to cancel the change."
+                    send "&c&l -> &7Type 'none' to delete the permission node."
+                    send ""
+                    close player's inventory
+                    set {zcmdmaker-changetime::%{_uuid}%} to now
+                    set {_now} to now
+                    set {zcmdmaker-changetype::%{_uuid}%} to "permission node"
+                    set {zcmdmaker-changeitem::%{_uuid}%} to {_cmd}
+                    wait 40 seconds
+                    {zcmdmaker-changetime::%{_uuid}%} is {_now}
+                    send "&cYour time to change the permission node has run out."
+                    zcmdmaker_openeditgui(player, {_cmd})
+                    delete {zcmdmaker-changetime::%{_uuid}%} and {zcmdmaker-changetype::%{_uuid}%} and {zcmdmaker-changeitem::%{_uuid}%}
+                    stop
+            
+            else if index of clicked slot is 24:
+
+                if click action is right mouse button:
+                    if {zcommandmaker-command::%{_cmd}%-cooldown-toggle} is true:
+                        delete {zcommandmaker-command::%{_cmd}%-cooldown-toggle}
+                    else:
+                        set {zcommandmaker-command::%{_cmd}%-cooldown-toggle} to true
+                    zcmdmaker_openeditgui(player, {_cmd})
+                else if click action is left mouse button:
+                    send ""
+                    send "&6Changing &6&l/%{_cmd}%&6 cooldown"
+                    send "&7Type how many seconds you want /%{_cmd}%'s cooldown to be."
+                    send ""
+                    send "&c&l -> &7Type 'cancel' to cancel the change."
+                    send "&c&l -> &7Type 'none' to delete the cooldown."
+                    send ""
+                    close player's inventory
+                    set {zcmdmaker-changetime::%{_uuid}%} to now
+                    set {_now} to now
+                    set {zcmdmaker-changetype::%{_uuid}%} to "cooldown"
+                    set {zcmdmaker-changeitem::%{_uuid}%} to {_cmd}
+                    wait 40 seconds
+                    {zcmdmaker-changetime::%{_uuid}%} is {_now}
+                    send "&cYour time to change the cooldown has run out."
+                    zcmdmaker_openeditgui(player, {_cmd})
+                    delete {zcmdmaker-changetime::%{_uuid}%} and {zcmdmaker-changetype::%{_uuid}%} and {zcmdmaker-changeitem::%{_uuid}%}
+                    stop
+            
+            else if index of clicked slot is 29:
+
+                if click action is right mouse button:
+                    if {zcommandmaker-command::%{_cmd}%-price-toggle} is true:
+                        delete {zcommandmaker-command::%{_cmd}%-price-toggle}
+                    else:
+                        set {zcommandmaker-command::%{_cmd}%-price-toggle} to true
+                    zcmdmaker_openeditgui(player, {_cmd})
+                else if click action is left mouse button:
+                    send ""
+                    send "&6Changing &6&l/%{_cmd}%&6 price"
+                    send "&7Type how much you want to change players for using /%{_cmd}%"
+                    send ""
+                    send "&c&l -> &7Type 'cancel' to cancel the change."
+                    send "&c&l -> &7Type 'none' to delete the price."
+                    send ""
+                    close player's inventory
+                    set {zcmdmaker-changetime::%{_uuid}%} to now
+                    set {_now} to now
+                    set {zcmdmaker-changetype::%{_uuid}%} to "price"
+                    set {zcmdmaker-changeitem::%{_uuid}%} to {_cmd}
+                    wait 40 seconds
+                    {zcmdmaker-changetime::%{_uuid}%} is {_now}
+                    send "&cYour time to change the price has run out."
+                    zcmdmaker_openeditgui(player, {_cmd})
+                    delete {zcmdmaker-changetime::%{_uuid}%} and {zcmdmaker-changetype::%{_uuid}%} and {zcmdmaker-changeitem::%{_uuid}%}
+                    stop
+            
+            else if index of clicked slot is 30:
+
+                if click action is right mouse button:
+                    if {zcommandmaker-command::%{_cmd}%-consolecmds-toggle} is true:
+                        delete {zcommandmaker-command::%{_cmd}%-consolecmds-toggle}
+                    else:
+                        set {zcommandmaker-command::%{_cmd}%-consolecmds-toggle} to true
+                    zcmdmaker_openeditgui(player, {_cmd})
+                else if click action is left mouse button:
+                    send ""
+                    send "&6Changing &6&l/%{_cmd}%&6 Console Commands"
+                    send "&7Type what you wish to set /%{_cmd}%'s console commands to."
+                    send ""
+                    send formatted "&6 -> &eTo create multiple commands use ""||"" to split the them. <suggest command:give {player} apple||give {player} dirt||broadcast {player} has used this command!>&7(Example)"
+                    send ""
+                    if {zcommandmaker-command::%{_cmd}%-consolecmds} is set:
+                        set {_message} to {zcommandmaker-command::%{_cmd}%-consolecmds}
+                        send formatted "&b&l -> &7Copy what the console commands are currently set to by clicking <suggest command:%{_message}%>&b&nHere"
+                        send ""
+                    send "&c&l -> &7Type 'cancel' to cancel the change."
+                    send "&c&l -> &7Type 'none' to delete the console commands."
+                    send ""
+                    close player's inventory
+                    set {zcmdmaker-changetime::%{_uuid}%} to now
+                    set {_now} to now
+                    set {zcmdmaker-changetype::%{_uuid}%} to "console commands"
+                    set {zcmdmaker-changeitem::%{_uuid}%} to {_cmd}
+                    wait 40 seconds
+                    {zcmdmaker-changetime::%{_uuid}%} is {_now}
+                    send "&cYour time to change the console commands has run out."
+                    zcmdmaker_openeditgui(player, {_cmd})
+                    delete {zcmdmaker-changetime::%{_uuid}%} and {zcmdmaker-changetype::%{_uuid}%} and {zcmdmaker-changeitem::%{_uuid}%}
+                    stop
+
+            else if index of clicked slot is 31:
+
+                if click action is right mouse button:
+                    if {zcommandmaker-command::%{_cmd}%-items-toggle} is true:
+                        delete {zcommandmaker-command::%{_cmd}%-items-toggle}
+                    else:
+                        set {zcommandmaker-command::%{_cmd}%-items-toggle} to true
+                    zcmdmaker_openeditgui(player, {_cmd})
+                else if click action is left mouse button:
+                    zcmdmaker_openitemgui(player, {_cmd})
+    else if name of player's current inventory contains " &8| Zabrid's Item Editor":
+        clicked inventory is player's current inventory
+        set {_cmd} to name of player's current inventory
+        replace all " &8| Zabrid's Item Editor" in {_cmd} with ""
+        replace all "&6&l/" in {_cmd} with ""
+        if index of clicked slot is between 45 and 53:
+            cancel event
+            if index of clicked slot is 45:
+                zcmdmaker_openeditgui(player, {_cmd})
+            else if index of clicked slot is 53:
+                zcmdmaker_saveitemgui(player, {_cmd})
+            else if index of clicked slot is 49:
+                delete {zcommandmaker-command-items-%{_cmd}%::*}
+                zcmdmaker_openitemgui(player, {_cmd})
+                send "&cYou have successfully cleared all items."
+on load:
+    delete {zcmdmaker-changetime::*} and {zcmdmaker-changetype::*} and {zcmdmaker-changeitem::*} and {zcommandmaker-commandcooldown::*}
+
+on chat:
+    player has permission "zcmdmaker.edit"
+    {zcmdmaker-changetime::%uuid of player%} is set
+
+    cancel event
+
+    if {zcmdmaker-changetype::%uuid of player%} is "command message":
+        set {_cmd} to {zcmdmaker-changeitem::%uuid of player%}
+        if message is "cancel":
+            zcmdmaker_openeditgui(player, {_cmd})
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            send "&cYou have cancelled the changing of the command message."
+            stop
+        if message is "none":
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            delete {zcommandmaker-command::%{_cmd}%-command}
+            send "&cYou have deleted the command message."
+            zcmdmaker_openeditgui(player, {_cmd})
+            stop
+        set {zcommandmaker-command::%{_cmd}%-command} to message
+        set {_message1::*} to {zcommandmaker-command::%{_cmd}%-command} split by "||"
+        if size of {_message1::*} is less than 1:
+            set {_message::*} to "&6 - &7N/A"
+        else:
+            loop {_message1::*}:
+                add "&6 - &f%loop-value%" to {_message::*}
+        delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+        send "&aYou have successfully changed the command message to:"
+        send {_message::*}
+        zcmdmaker_openeditgui(player, {_cmd})
+    else if {zcmdmaker-changetype::%uuid of player%} is "title message":
+        set {_cmd} to {zcmdmaker-changeitem::%uuid of player%}
+        if message is "cancel":
+            zcmdmaker_openeditgui(player, {_cmd})
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            send "&cYou have cancelled the changing of the title/subtitle."
+            stop
+        if message is "none":
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            delete {zcommandmaker-command::%{_cmd}%-titlemessage}
+            send "&cYou have deleted the title/subtitle."
+            zcmdmaker_openeditgui(player, {_cmd})
+            stop
+        delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+        set {zcommandmaker-command::%{_cmd}%-titlemessage} to message
+        set {_title::*} to {zcommandmaker-command::%{_cmd}%-titlemessage} split by "||"
+        set {_title} to {_title::1} ? "N/A"
+        set {_subtitle} to {_title::2} ? "N/A"
+        send "&aYou have successfully changed the title/subtitle to:"
+        send "&6 Title - &f%{_title}%"
+        send "&6 Subtitle - &f%{_subtitle}%"
+        zcmdmaker_openeditgui(player, {_cmd})
+    else if {zcmdmaker-changetype::%uuid of player%} is "permission node":
+        set {_cmd} to {zcmdmaker-changeitem::%uuid of player%}
+        if message is "cancel":
+            zcmdmaker_openeditgui(player, {_cmd})
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            send "&cYou have cancelled the changing of the permission node."
+            stop
+        if message is "none":
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            delete {zcommandmaker-command::%{_cmd}%-permission}
+            send "&cYou have deleted the permission node."
+            zcmdmaker_openeditgui(player, {_cmd})
+            stop
+        delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+        set {zcommandmaker-command::%{_cmd}%-permission} to message
+        send "&aYou have successfully changed the title/subtitle to:"
+        send "&6 Permission Node - &f%message%"
+        zcmdmaker_openeditgui(player, {_cmd})
+    else if {zcmdmaker-changetype::%uuid of player%} is "cooldown":
+        set {_cmd} to {zcmdmaker-changeitem::%uuid of player%}
+        if message is "cancel":
+            zcmdmaker_openeditgui(player, {_cmd})
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            send "&cYou have cancelled the changing of the cooldown."
+            stop
+        if message is "none":
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            delete {zcommandmaker-command::%{_cmd}%-cooldown}
+            send "&cYou have deleted the cooldown."
+            zcmdmaker_openeditgui(player, {_cmd})
+            stop
+        set {_cooldown} to message parsed as integer
+        if {_cooldown} is not an integer:
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            send "&cYou must specify an integer to be the amount of seconds."
+            zcmdmaker_openeditgui(player, {_cmd})
+            stop
+        delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+        set {zcommandmaker-command::%{_cmd}%-cooldown} to "%{_cooldown}% seconds" parsed as timespan
+        send "&aYou have successfully changed the cooldown to:"
+        send "&6 Cooldown - &f%{zcommandmaker-command::%{_cmd}%-cooldown}%"
+        zcmdmaker_openeditgui(player, {_cmd})
+    else if {zcmdmaker-changetype::%uuid of player%} is "price":
+        set {_cmd} to {zcmdmaker-changeitem::%uuid of player%}
+        if message is "cancel":
+            zcmdmaker_openeditgui(player, {_cmd})
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            send "&cYou have cancelled the changing of the price."
+            stop
+        if message is "none":
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            delete {zcommandmaker-command::%{_cmd}%-price}
+            send "&cYou have deleted the price."
+            zcmdmaker_openeditgui(player, {_cmd})
+            stop
+        set {_cooldown} to message parsed as integer
+        if {_cooldown} is not an integer:
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            send "&cYou must specify an integer to be the price."
+            zcmdmaker_openeditgui(player, {_cmd})
+            stop
+        delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+        set {zcommandmaker-command::%{_cmd}%-price} to {_cooldown}
+        set {_format} to zcmdmaker_formatcommas("%{_cooldown}%")
+        send "&aYou have successfully changed the price to:"
+        send "&6 Price - &f$%{_format}%"
+        zcmdmaker_openeditgui(player, {_cmd})
+    else if {zcmdmaker-changetype::%uuid of player%} is "console commands":
+        set {_cmd} to {zcmdmaker-changeitem::%uuid of player%}
+        if message is "cancel":
+            zcmdmaker_openeditgui(player, {_cmd})
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            send "&cYou have cancelled the changing of the console commands."
+            stop
+        if message is "none":
+            delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+            delete {zcommandmaker-command::%{_cmd}%-consolecmds}
+            send "&cYou have deleted the console commands."
+            zcmdmaker_openeditgui(player, {_cmd})
+            stop
+        delete {zcmdmaker-changetime::%uuid of player%} and {zcmdmaker-changetype::%uuid of player%} and {zcmdmaker-changeitem::%uuid of player%}
+        set {zcommandmaker-command::%{_cmd}%-consolecmds} to message
+        set {_message1::*} to {zcommandmaker-command::%{_cmd}%-consolecmds} split by "||"
+        if size of {_message1::*} is less than 1:
+            set {_message::*} to "&6 - &7N/A"
+        else:
+            loop {_message1::*}:
+                add "&6 - &f%loop-value%" to {_message::*}
+        send "&aYou have successfully changed the console commands to:"
+        send {_message::*}
+        zcmdmaker_openeditgui(player, {_cmd})
+
+on tab complete of "/commandmaker" and "/cm" and "/cmd":
+    player has permission "zcmdmaker.create" or "zcmdmaker.delete" or "zcmdmaker.edit" or "zcmdmaker.list"
+    set tab completions for position 1 to "create", "delete", "edit" and "list"
+    if {zcommandmaker-command::*} is set:
+        loop {zcommandmaker-command::*}:
+            loop-index does not contain "-"
+            add loop-index to {_tabs::*}
+            set tab completions for position 2 to {_tabs::*}
+
+function zcmdmaker_openitemgui(p: player, cmd: text):
+    if {_cmd} contains " " or "-":
+        send "&cThe command you specified has disallowed characters." to {_p}
+        stop
+    if {_p} does not have permission "zcmdmaker.edit":
+        send formatted {@no-perms-message} to {_p}
+        stop
+    set {_gui} to chest inventory with 6 rows named "&6&l/%{_cmd}% &8| Zabrid's Item Editor"
+    set slot (all integers between 45 and 53) of {_gui} to 1 of grey stained glass pane named "&8Zabrid's Command Maker" with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+    set slot 45 of {_gui} to 1 of birch door named "&cReturn to the previous menu." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+    set slot 53 of {_gui} to 1 of lime bed named "&aSave Items" with lore "&7Save all the items currently in this gui." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+    set slot 49 of {_gui} to 1 of barrier named "&c&lCLEAR ALL ITEMS" with lore "&7Save all the items currently in this gui." with nbt "{zcmdmaker-command:""%{_cmd}%""}"
+    set {_slot} to -1
+    loop {zcommandmaker-command-items-%{_cmd}%::*}:
+        add 1 to {_slot}
+        set slot {_slot} of {_gui} to loop-value
+    open {_gui} to {_p}
+
+function zcmdmaker_saveitemgui(p: player, cmd: text):
+    if {_cmd} contains " " or "-":
+        send "&cThe command you specified has disallowed characters." to {_p}
+        stop
+    if {_p} does not have permission "zcmdmaker.edit":
+        send formatted {@no-perms-message} to {_p}
+        stop
+    set {_slot} to -1
+    delete {zcommandmaker-command-items-%{_cmd}%::*}
+    loop 44 times:
+        add 1 to {_slot}
+        if slot {_slot} of {_p}'s current inventory is not air:
+            add slot {_slot} of {_p}'s current inventory to {zcommandmaker-command-items-%{_cmd}%::*}
+    send "&aYou have successfully saved all command items." to {_p}
+    zcmdmaker_openitemgui({_p}, {_cmd})
+function zcmdmaker_bordergui(gui: inventory, rows: number, borderItem: item) :: inventory:
+    set slot (numbers from 0 to 8) of {_gui} to {_borderItem}
+    loop ({_rows} - 2) times:
+        set slot (((loop-value) * 9), and ((loop-value) * 9) + 8) of {_gui} to {_borderItem}
+    set slot (numbers from ({_rows} - 1) * 9 to (({_rows} - 1) * 9) + 8) of {_gui} to {_borderItem}
+    return {_gui}
+
+function zcmdmaker_glow(i: item) :: item:
+    set {_i} to {_i} with all flags hidden
+    enchant {_i} with unbreaking 1
+    return {_i}
+
+function zcmdmaker_formatcommas(b: text) :: text:
+    set {_number::*} to {_b} split at ""
+    loop size of {_number::*} times:
+        add last element of {_number::*} to {_number2::*}
+        remove last element of {_number::*} from {_number::*}
+    set {_time} to 1
+    set {_n} to -1
+    set {_integer} to ""
+    loop {_number2::*}:
+        add 1 to {_n}
+        set {_integer} to "%loop-value%%{_integer}%"
+        if ({_n} / 3) = {_time}:
+            add 1 to {_time}
+            if {_n} + 1 isn't size of {_number2::*}:
+                set {_integer} to ",%{_integer}%"
+    return {_integer}
+
+function zcmdmaker_createCommandTabSkript(cmd: text):
+    create script "plugins/Skript/scripts/ZabridCommandMaker/TabCommands/%{_cmd}%.sk"
+    write "command /%{_cmd}% [<text>] [<text>]:" at line 1 to file "plugins/Skript/scripts/ZabridCommandMaker/TabCommands/%{_cmd}%.sk"
+    write "    trigger:" at line 2 to file "plugins/Skript/scripts/ZabridCommandMaker/TabCommands/%{_cmd}%.sk"
+    write "        set {_run} to true" at line 3 to file "plugins/Skript/scripts/ZabridCommandMaker/TabCommands/%{_cmd}%.sk"
+    execute console command "sk reload ZabridCommandMaker/TabCommands/"
